@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env
+
+# Database and generated data
+data/
+
+# macOS
+.DS_Store
+
+# Past paper images (large, re-generatable)
+data/images/
+
+# IDE
+.vscode/
+.idea/

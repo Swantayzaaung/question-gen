@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flask-app",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/Users/katieliu/Downloads/question-gen-main/app.py"],
+      "port": 5001,
+      "autoPort": true
+    }
+  ]
+}

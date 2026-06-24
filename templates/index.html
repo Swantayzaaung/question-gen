@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math Practice — Edexcel IAL P2</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]
+    });"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.3/dist/purify.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 16px 32px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; }
+    header span { font-size: 0.82rem; color: #999; }
+
+    .container { max-width: 860px; margin: 36px auto; padding: 0 24px; }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 24px 28px;
+    }
+
+    .panel-section { margin-bottom: 24px; }
+    .panel-section:last-child { margin-bottom: 0; }
+
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+
+    select {
+      width: 100%;
+      padding: 9px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background: #fff;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23aaa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    select:focus { outline: none; border-color: #4f7ef8; box-shadow: 0 0 0 3px rgba(79,126,248,.12); }
+
+    .presets { display: flex; gap: 8px; flex-wrap: wrap; }
+    .preset-btn {
+      padding: 7px 16px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 20px;
+      background: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #555;
+      transition: all 0.15s;
+    }
+    .preset-btn:hover { border-color: #4f7ef8; color: #4f7ef8; }
+    .preset-btn.active { background: #4f7ef8; border-color: #4f7ef8; color: #fff; }
+
+    .fine-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    @media (max-width: 640px) { .fine-controls { grid-template-columns: 1fr; } }
+
+    .control-card {
+      border: 1.5px solid #e8e8e8;
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .control-title { font-size: 0.82rem; font-weight: 700; color: #333; margin-bottom: 4px; }
+    .control-desc  { font-size: 0.75rem; color: #999; line-height: 1.4; margin-bottom: 14px; }
+
+    .steps-row { display: flex; align-items: center; gap: 10px; }
+    input[type=range] { flex: 1; accent-color: #4f7ef8; height: 4px; cursor: pointer; }
+    .steps-val {
+      width: 28px; height: 28px;
+      background: #4f7ef8; color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-weight: 700; flex-shrink: 0;
+    }
+    .steps-hint { font-size: 0.75rem; color: #aaa; margin-top: 8px; min-height: 2.4em; line-height: 1.4; }
+
+    .option-group { display: flex; flex-direction: column; gap: 6px; }
+    .option-btn {
+      padding: 8px 12px;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 7px;
+      background: #fff;
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.12s;
+      color: #444; line-height: 1.3;
+    }
+    .option-btn .opt-title { font-weight: 700; display: block; }
+    .option-btn .opt-sub   { color: #aaa; font-size: 0.75rem; margin-top: 1px; display: block; }
+    .option-btn:hover { border-color: #4f7ef8; }
+    .option-btn.active { border-color: #4f7ef8; background: #f0f4ff; color: #2d58d4; }
+    .option-btn.active .opt-sub { color: #7090d0; }
+
+    .generate-row { display: flex; justify-content: flex-end; margin-top: 20px; }
+    #generate-btn {
+      padding: 11px 32px;
+      background: #4f7ef8; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      transition: background 0.15s;
+    }
+    #generate-btn:hover { background: #3b6cf4; }
+    #generate-btn:disabled { background: #b0bec5; cursor: not-allowed; }
+
+    #output { margin-top: 28px; }
+
+    .loading { text-align: center; padding: 60px; color: #999; font-size: 0.9rem; }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid #e8e8e8; border-top-color: #4f7ef8;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .question-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 24px;
+      background: #fafafa;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .card-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .badge {
+      font-size: 0.74rem; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .badge-topic         { background: #eff3ff; color: #3b6cf4; }
+    .badge-HIGH          { background: #dcfce7; color: #166534; }
+    .badge-MODERATE      { background: #fef9c3; color: #854d0e; }
+    .badge-LOW           { background: #fee2e2; color: #991b1b; }
+    .badge-approved      { background: #dcfce7; color: #166534; }
+    .badge-verified      { background: #d1fae5; color: #065f46; }
+    .badge-needs_review  { background: #fef3c7; color: #92400e; }
+    .badge-template      { background: #ede9fe; color: #5b21b6; }
+    .badge-hybrid        { background: #dbeafe; color: #1e40af; }
+    .badge-llm           { background: #fee2e2; color: #991b1b; }
+
+    .params-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill {
+      font-size: 0.72rem; padding: 2px 9px;
+      border-radius: 20px; background: #f0f0f0;
+      color: #666; font-weight: 500;
+    }
+
+    .card-body { padding: 28px 32px; }
+
+    .question-text { font-size: 1.05rem; line-height: 1.75; margin-bottom: 18px; }
+
+    .parts { margin-bottom: 8px; }
+    .part-row {
+      display: flex; gap: 12px; align-items: baseline;
+      font-size: 0.95rem; line-height: 1.65; padding: 4px 0;
+    }
+    .part-label  { font-weight: 700; color: #4f7ef8; min-width: 22px; }
+    .part-marks  { color: #aaa; font-size: 0.8rem; margin-left: auto; white-space: nowrap; }
+
+    .divider { border: none; border-top: 1px solid #f0f0f0; margin: 22px 0; }
+
+    /* Answer submission */
+    .answer-section {
+      background: #f8faff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin: 20px 0;
+    }
+    .answer-section label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    .answer-row { display: flex; gap: 10px; align-items: stretch; }
+    .answer-input {
+      flex: 1;
+      padding: 9px 14px;
+      border: 1.5px solid #dbeafe;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      font-family: 'Courier New', monospace;
+    }
+    .answer-input:focus { outline: none; border-color: #4f7ef8; }
+    .submit-btn {
+      padding: 9px 20px;
+      background: #4f7ef8; color: #fff;
+      border: none; border-radius: 7px;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+    }
+    .submit-btn:hover { background: #3b6cf4; }
+    .submit-btn:disabled { background: #b0bec5; cursor: not-allowed; }
+    .hint-btn {
+      padding: 9px 16px;
+      background: #fff; color: #666;
+      border: 1.5px solid #e0e0e0; border-radius: 7px;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    }
+    .hint-btn:hover { border-color: #4f7ef8; color: #4f7ef8; }
+
+    .feedback-box {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .feedback-correct   { background: #dcfce7; color: #166534; border-left: 4px solid #22c55e; }
+    .feedback-incorrect { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+    .misconception-tag {
+      display: inline-block;
+      font-size: 0.73rem;
+      background: #fef3c7; color: #92400e;
+      padding: 2px 8px; border-radius: 12px;
+      margin-top: 6px; margin-right: 4px;
+    }
+
+    .mastery-bar-wrap {
+      margin-top: 10px;
+      font-size: 0.78rem;
+      color: #555;
+    }
+    .mastery-bar-bg {
+      height: 6px; background: #e5e7eb;
+      border-radius: 3px; margin-top: 4px; overflow: hidden;
+    }
+    .mastery-bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    /* Worked solution */
+    .solution-toggle {
+      background: #f8f8f8; border: 1.5px solid #e8e8e8;
+      border-radius: 7px; padding: 8px 16px;
+      font-size: 0.84rem; font-weight: 600; cursor: pointer;
+      color: #555; transition: all 0.12s;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .solution-toggle:hover { border-color: #4f7ef8; color: #4f7ef8; background: #f0f4ff; }
+
+    .solution-body { display: none; }
+    .solution-body.visible { display: block; }
+
+    .steps-list { display: flex; flex-direction: column; gap: 12px; }
+    .step { display: flex; gap: 14px; align-items: flex-start; font-size: 0.95rem; line-height: 1.65; }
+    .step-num {
+      min-width: 26px; height: 26px;
+      background: #eff3ff; color: #4f7ef8;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 800; flex-shrink: 0; margin-top: 3px;
+    }
+
+    .answer-box {
+      margin-top: 18px; padding: 14px 18px;
+      background: #f8faff; border-left: 3px solid #4f7ef8;
+      border-radius: 0 8px 8px 0; font-size: 0.95rem;
+    }
+    .answer-box strong { color: #4f7ef8; }
+
+    .meta-grid {
+      margin-top: 20px; padding-top: 16px;
+      border-top: 1px solid #f4f4f4;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .meta-item { font-size: 0.78rem; }
+    .meta-item .meta-key { color: #bbb; text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.05em; display: block; margin-bottom: 2px; }
+    .meta-item .meta-val { color: #333; font-weight: 600; }
+
+    .verification-note {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      color: #9a3412;
+    }
+
+    .error-box {
+      background: #fff0f0; border: 1px solid #fca5a5;
+      border-radius: 10px; padding: 20px 24px;
+      color: #991b1b; font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Math Practice</h1>
+  <span>Edexcel IAL Pure Mathematics · P2</span>
+</header>
+
+<div class="container">
+  <div class="panel">
+
+    <div class="panel-section">
+      <div class="section-label">Topic</div>
+      <select id="topic-select">
+        <option value="">Loading topics…</option>
+      </select>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Quick difficulty preset</div>
+      <div class="presets" id="presets-container">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Fine controls</div>
+      <div class="fine-controls">
+
+        <div class="control-card">
+          <div class="control-title">Solution steps</div>
+          <div class="control-desc">Number of distinct mathematical techniques required</div>
+          <div class="steps-row">
+            <input type="range" id="steps-slider" min="1" max="5" value="2">
+            <div class="steps-val" id="steps-val">2</div>
+          </div>
+          <div class="steps-hint" id="steps-hint">Two techniques chained together</div>
+        </div>
+
+        <div class="control-card">
+          <div class="control-title">Answer type</div>
+          <div class="control-desc">How "nice" the final answer needs to be</div>
+          <div class="option-group" id="clean-group">
+            <button class="option-btn active" data-val="clean">
+              <span class="opt-title">Clean</span>
+              <span class="opt-sub">Integer or simple fraction</span>
+            </button>
+            <button class="option-btn" data-val="mixed">
+              <span class="opt-title">Mixed</span>
+              <span class="opt-sub">Simple surd or larger fraction</span>
+            </button>
+            <button class="option-btn" data-val="messy">
+              <span class="opt-title">Messy</span>
+              <span class="opt-sub">Irrational or decimal</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div class="control-title">Topic scope</div>
+          <div class="control-desc">Whether the question stays in one topic</div>
+          <div class="option-group" id="focus-group">
+            <button class="option-btn active" data-val="single">
+              <span class="opt-title">Single topic</span>
+              <span class="opt-sub">Stays within chosen topic</span>
+            </button>
+            <button class="option-btn" data-val="multi">
+              <span class="opt-title">Multi-topic</span>
+              <span class="opt-sub">May draw on related area</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="generate-row">
+      <button id="generate-btn">Generate question</button>
+    </div>
+  </div>
+
+  <div id="output"></div>
+</div>
+
+<script>
+  const STEPS_HINTS = {
+    1: "One technique — apply a single formula or rule",
+    2: "Two techniques chained together",
+    3: "Three distinct techniques",
+    4: "Four techniques — a more involved solution",
+    5: "Five or more techniques — complex multi-step"
+  };
+
+  let state = { steps: 2, cleanliness: "clean", focus: "single" };
+  let currentItem = null;
+  let hintsUsed = 0;
+  let startTime = null;
+
+  // ── Topic and preset data (source of truth is the server) ────────────────
+  const FALLBACK_TOPICS = [
+    { value: "arithmetic_series",   label: "Arithmetic Series" },
+    { value: "geometric_series",    label: "Geometric Series" },
+    { value: "differentiation",     label: "Differentiation" },
+    { value: "integration",         label: "Integration" },
+    { value: "logarithms",          label: "Logarithms" },
+    { value: "binomial_expansion",  label: "Binomial Expansion" },
+  ];
+
+  const PRESETS_DATA = [
+    { level: 1, label: "Easy",        steps: 1, cleanliness: "clean", focus: "single" },
+    { level: 2, label: "Accessible",  steps: 2, cleanliness: "clean", focus: "single", default: true },
+    { level: 3, label: "Moderate",    steps: 3, cleanliness: "mixed", focus: "single" },
+    { level: 4, label: "Challenging", steps: 3, cleanliness: "mixed", focus: "multi" },
+    { level: 5, label: "Hard",        steps: 4, cleanliness: "messy", focus: "multi" },
+  ];
+
+  function toLabel(s) {
+    return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function populateTopics(topics) {
+    const sel = document.getElementById('topic-select');
+    sel.innerHTML = '';
+    topics.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = typeof t === 'string' ? t : t.value;
+      opt.textContent = typeof t === 'string' ? toLabel(t) : t.label;
+      sel.appendChild(opt);
+    });
+  }
+
+  function buildPresets() {
+    const container = document.getElementById('presets-container');
+    container.innerHTML = '';
+    PRESETS_DATA.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'preset-btn' + (p.default ? ' active' : '');
+      btn.dataset.preset = p.level;
+      btn.dataset.steps = p.steps;
+      btn.dataset.cleanliness = p.cleanliness;
+      btn.dataset.focus = p.focus;
+      btn.textContent = p.label;
+      btn.addEventListener('click', () => {
+        container.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyPreset(p.steps, p.cleanliness, p.focus);
+      });
+      container.appendChild(btn);
+    });
+    // Custom button
+    const custom = document.createElement('button');
+    custom.className = 'preset-btn';
+    custom.dataset.preset = 'custom';
+    custom.textContent = 'Custom';
+    custom.style.cssText = 'color:#bbb; border-style:dashed;';
+    container.appendChild(custom);
+  }
+
+  // ── Server URL detection ─────────────────────────────
+  // We need the Flask server origin explicitly so fetch doesn't get mangled
+  // by the preview panel or a sandboxed iframe.
+  // When served by Flask, window.location.origin IS the Flask server.
+  // When opened as a raw file or in a preview panel it won't be — we warn.
+  let SERVER = window.location.origin; // e.g. http://localhost:5001
+  let serverReachable = false;
+
+  async function detectServer() {
+    // Only treat the server as reachable if it returns our /topics JSON.
+    try {
+      const r = await fetch(SERVER + '/topics', { signal: AbortSignal.timeout(3000) });
+      if (!r.ok) throw new Error('bad status');
+      const data = await r.json();
+      if (!Array.isArray(data)) throw new Error('unexpected response');
+      serverReachable = true;
+      populateTopics(data.length > 0 ? data : FALLBACK_TOPICS);
+      hideBanner();
+    } catch (_) {
+      // Server not at this origin — fall back to hardcoded list and show banner
+      populateTopics(FALLBACK_TOPICS);
+      showBanner();
+    }
+  }
+
+  function showBanner() {
+    let b = document.getElementById('server-banner');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'server-banner';
+      b.style.cssText = [
+        'background:#fff7ed','border:1px solid #fed7aa','border-radius:10px',
+        'padding:14px 20px','margin-bottom:20px','font-size:0.875rem','color:#9a3412',
+        'line-height:1.5'
+      ].join(';');
+      b.innerHTML = [
+        '<strong>Flask server not detected.</strong> The generate button will not work here.<br>',
+        'To use the app, run: <code style="background:#fef3c7;padding:2px 6px;border-radius:4px">',
+        'python3 app.py</code>',
+        ' then open <code style="background:#fef3c7;padding:2px 6px;border-radius:4px">',
+        'http://localhost:5001/</code> in your browser.'
+      ].join('');
+      document.querySelector('.container').prepend(b);
+    }
+    b.style.display = '';
+    document.getElementById('generate-btn').disabled = true;
+    document.getElementById('generate-btn').title = 'Start the Flask server first';
+  }
+
+  function hideBanner() {
+    const b = document.getElementById('server-banner');
+    if (b) b.style.display = 'none';
+    document.getElementById('generate-btn').disabled = false;
+    document.getElementById('generate-btn').title = '';
+  }
+
+  // Init on page load
+  buildPresets();
+  detectServer();
+
+  // ── Steps slider ──────────────────────────────────────
+  const slider   = document.getElementById('steps-slider');
+  const stepsVal = document.getElementById('steps-val');
+  const stepsHint = document.getElementById('steps-hint');
+
+  slider.addEventListener('input', () => {
+    state.steps = parseInt(slider.value);
+    stepsVal.textContent = state.steps;
+    stepsHint.textContent = STEPS_HINTS[state.steps];
+    clearPreset();
+  });
+
+  function setupOptionGroup(groupId, stateKey) {
+    document.getElementById(groupId).querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById(groupId).querySelectorAll('.option-btn')
+          .forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state[stateKey] = btn.dataset.val;
+        clearPreset();
+      });
+    });
+  }
+  setupOptionGroup('clean-group', 'cleanliness');
+  setupOptionGroup('focus-group', 'focus');
+
+  function clearPreset() {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    const custom = document.querySelector('[data-preset="custom"]');
+    if (custom) custom.classList.add('active');
+  }
+
+  function applyPreset(steps, cleanliness, focus) {
+    state = { steps, cleanliness, focus };
+    slider.value = steps;
+    stepsVal.textContent = steps;
+    stepsHint.textContent = STEPS_HINTS[steps];
+    document.getElementById('clean-group').querySelectorAll('.option-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.val === cleanliness);
+    });
+    document.getElementById('focus-group').querySelectorAll('.option-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.val === focus);
+    });
+  }
+
+  // ── Safe HTML helper ──────────────────────────────────
+  function safeHTML(html) {
+    if (typeof DOMPurify !== 'undefined') {
+      return DOMPurify.sanitize(html, {
+        ALLOW_UNKNOWN_PROTOCOLS: false,
+        FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed'],
+        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+      });
+    }
+    // Fallback: strip tags
+    const div = document.createElement('div');
+    div.textContent = html;
+    return div.innerHTML;
+  }
+
+  // ── Generate ──────────────────────────────────────────
+  document.getElementById('generate-btn').addEventListener('click', async () => {
+    const topic = document.getElementById('topic-select').value;
+    const btn = document.getElementById('generate-btn');
+    const out = document.getElementById('output');
+
+    if (!topic) {
+      out.innerHTML = '<div class="error-box">Please select a topic first.</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    out.innerHTML = `<div class="loading"><div class="spinner"></div>Generating — this takes a few seconds...</div>`;
+    currentItem = null;
+    hintsUsed = 0;
+    startTime = Date.now();
+
+    try {
+      const res = await fetch(SERVER + '/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, ...state })
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        out.innerHTML = `<div class="error-box">Error: ${safeText(data.error)}</div>`;
+      } else {
+        currentItem = data;
+        renderQuestionCard(data, topic, out);
+      }
+    } catch(e) {
+      out.innerHTML = `<div class="error-box">Request failed: ${safeText(e.message)}</div>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Generate question';
+  });
+
+  function safeText(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  function renderQuestionCard(q, topic, container) {
+    const topicLabel = topic.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const solv   = q.solvability || 'MODERATE';
+    const score  = q.solvability_score != null ? q.solvability_score.toFixed(3) : '—';
+    const params = q.params || state;
+    const status = q.status || 'needs_review';
+    const source = q.source || 'llm';
+
+    const CLEAN_LABELS = { clean:'Clean answer', mixed:'Mixed answer', messy:'Messy answer' };
+    const FOCUS_LABELS = { single:'Single topic', multi:'Multi-topic' };
+    const STATUS_LABELS = { approved: 'Approved', verified: 'Verified', needs_review: 'Needs review', draft: 'Draft', rejected: 'Rejected' };
+    const SOURCE_LABELS = { template: 'Template', hybrid: 'Template+LLM', llm: 'LLM only' };
+
+    // Build card using DOM (not innerHTML for user-controlled parts)
+    container.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'question-card';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'card-header';
+    header.innerHTML = safeHTML(`
+      <div class="card-header-left">
+        <span class="badge badge-topic">${topicLabel}</span>
+        <div class="params-pills">
+          <span class="pill">${params.steps} step${params.steps!==1?'s':''}</span>
+          <span class="pill">${CLEAN_LABELS[params.cleanliness]||params.cleanliness}</span>
+          <span class="pill">${FOCUS_LABELS[params.focus]||params.focus}</span>
+          <span class="badge badge-${status}" title="${STATUS_LABELS[status]||status}">${STATUS_LABELS[status]||status}</span>
+          <span class="badge badge-${source}">${SOURCE_LABELS[source]||source}</span>
+        </div>
+      </div>
+      <span class="badge badge-${solv}">Solvability: ${solv} (${score})</span>
+    `);
+    card.appendChild(header);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    // Question text — allow math LaTeX but sanitize
+    const qtDiv = document.createElement('div');
+    qtDiv.className = 'question-text';
+    qtDiv.innerHTML = safeHTML(q.question_text || '');
+    body.appendChild(qtDiv);
+
+    // Parts
+    if (q.parts && q.parts.length) {
+      const partsDiv = document.createElement('div');
+      partsDiv.className = 'parts';
+      (q.parts || []).forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'part-row';
+        row.innerHTML = safeHTML(`
+          <span class="part-label">(${p.part})</span>
+          <span>${p.instruction || ''}</span>
+          <span class="part-marks">[${p.marks} mark${p.marks!==1?'s':''}]</span>
+        `);
+        partsDiv.appendChild(row);
+      });
+      body.appendChild(partsDiv);
+    }
+
+    // Unverified warning
+    if (status === 'needs_review' || status === 'draft') {
+      const warn = document.createElement('div');
+      warn.className = 'verification-note';
+      warn.textContent = 'This question has not been deterministically verified. It may contain errors. Use with caution.';
+      body.appendChild(warn);
+    }
+
+    // Answer input section
+    const ansSection = document.createElement('div');
+    ansSection.className = 'answer-section';
+    ansSection.innerHTML = safeHTML('<label>Your answer</label>');
+    const ansRow = document.createElement('div');
+    ansRow.className = 'answer-row';
+
+    const ansInput = document.createElement('input');
+    ansInput.type = 'text';
+    ansInput.className = 'answer-input';
+    ansInput.placeholder = 'Enter your answer (e.g. 42, 3/2, 2√3)';
+    ansInput.id = 'answer-input';
+
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'submit-btn';
+    submitBtn.textContent = 'Submit';
+    submitBtn.onclick = () => submitAnswer(q.item_id, ansInput.value);
+
+    const hintBtn = document.createElement('button');
+    hintBtn.className = 'hint-btn';
+    hintBtn.textContent = 'Hint';
+    hintBtn.onclick = () => showHint(q);
+
+    ansRow.appendChild(ansInput);
+    ansRow.appendChild(hintBtn);
+    ansRow.appendChild(submitBtn);
+    ansSection.appendChild(ansRow);
+
+    const feedbackDiv = document.createElement('div');
+    feedbackDiv.id = 'feedback-div';
+    ansSection.appendChild(feedbackDiv);
+    body.appendChild(ansSection);
+
+    // Divider
+    const hr = document.createElement('hr');
+    hr.className = 'divider';
+    body.appendChild(hr);
+
+    // Solution toggle
+    const toggle = document.createElement('button');
+    toggle.className = 'solution-toggle';
+    toggle.textContent = '▶ Show worked solution';
+    toggle.onclick = function() { toggleSolution(this); };
+    body.appendChild(toggle);
+
+    const solBody = document.createElement('div');
+    solBody.className = 'solution-body';
+
+    const stepsList = document.createElement('div');
+    stepsList.className = 'steps-list';
+    (q.worked_solution || q.canonical_solution || []).forEach((s, i) => {
+      const stepEl = document.createElement('div');
+      stepEl.className = 'step';
+      stepEl.innerHTML = safeHTML(`<div class="step-num">${i+1}</div><div>${s}</div>`);
+      stepsList.appendChild(stepEl);
+    });
+    solBody.appendChild(stepsList);
+
+    const ansBox = document.createElement('div');
+    ansBox.className = 'answer-box';
+    ansBox.innerHTML = safeHTML(`<strong>Answer:</strong> ${q.final_answer || '—'}`);
+    solBody.appendChild(ansBox);
+    body.appendChild(solBody);
+
+    // Meta grid
+    const meta = document.createElement('div');
+    meta.className = 'meta-grid';
+    meta.innerHTML = safeHTML(`
+      <div class="meta-item">
+        <span class="meta-key">Significant steps</span>
+        <span class="meta-val">${q.significant_steps ?? '—'}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-key">Answer type</span>
+        <span class="meta-val">${q.answer_type || '—'}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-key">Source</span>
+        <span class="meta-val">${SOURCE_LABELS[source] || source}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-key">Status</span>
+        <span class="meta-val">${STATUS_LABELS[status] || status}</span>
+      </div>
+    `);
+    body.appendChild(meta);
+
+    card.appendChild(body);
+    container.appendChild(card);
+
+    // Render math
+    renderMathInElement(container, {
+      delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]
+    });
+  }
+
+  async function submitAnswer(itemId, answer) {
+    if (!answer.trim()) { alert('Please enter an answer.'); return; }
+    if (!itemId) { alert('No item loaded. Please generate a question first.'); return; }
+
+    const feedbackDiv = document.getElementById('feedback-div');
+    feedbackDiv.innerHTML = '<em style="color:#aaa;">Checking...</em>';
+
+    const timeSeconds = startTime ? (Date.now() - startTime) / 1000 : null;
+
+    try {
+      const res = await fetch(SERVER + '/attempt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 'default',
+          item_id: itemId,
+          submitted_answer: answer,
+          time_seconds: timeSeconds,
+          hints_used: hintsUsed,
+        })
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        feedbackDiv.innerHTML = `<div class="feedback-box feedback-incorrect">${safeText(data.error)}</div>`;
+        return;
+      }
+
+      const cls = data.is_correct ? 'feedback-correct' : 'feedback-incorrect';
+      let html = `<div class="feedback-box ${cls}">${safeText(data.feedback)}`;
+
+      if (data.mastery) {
+        const pct = (data.mastery.mastery_probability * 100).toFixed(0);
+        const color = data.mastery.mastery_probability > 0.7 ? '#22c55e' : data.mastery.mastery_probability > 0.4 ? '#f59e0b' : '#ef4444';
+        html += `<div class="mastery-bar-wrap">
+          Skill mastery: ${pct}%
+          <div class="mastery-bar-bg"><div class="mastery-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        </div>`;
+      }
+
+      if (data.detected_misconceptions && data.detected_misconceptions.length) {
+        html += '<div style="margin-top:8px">';
+        data.detected_misconceptions.forEach(m => {
+          html += `<span class="misconception-tag">${safeText(m)}</span>`;
+        });
+        html += '</div>';
+      }
+
+      html += '</div>';
+      feedbackDiv.innerHTML = html;
+
+    } catch(e) {
+      feedbackDiv.innerHTML = `<div class="feedback-box feedback-incorrect">Request failed: ${safeText(e.message)}</div>`;
+    }
+  }
+
+  function showHint(q) {
+    hintsUsed++;
+    const steps = q.worked_solution || q.canonical_solution || [];
+    if (steps.length === 0) { alert('No hints available.'); return; }
+    const hint = steps[Math.min(hintsUsed - 1, steps.length - 1)];
+    alert(`Hint ${hintsUsed}: ${hint}`);
+  }
+
+  function toggleSolution(btn) {
+    const body = btn.nextElementSibling;
+    const visible = body.classList.toggle('visible');
+    btn.textContent = visible ? '▼ Hide worked solution' : '▶ Show worked solution';
+    if (visible) renderMathInElement(body, {
+      delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]
+    });
+  }
+</script>
+
+</body>
+</html>
