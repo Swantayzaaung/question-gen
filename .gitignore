@@ -21,3 +21,4 @@ data/images/
 # IDE
 .vscode/
 .idea/
+.claude/
