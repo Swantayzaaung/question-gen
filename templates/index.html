@@ -21,6 +21,7 @@
       background: #f5f5f0;
       color: #1a1a1a;
       min-height: 100vh;
+      padding-bottom: 62px;
     }
 
     header {
@@ -332,6 +333,97 @@
       border-radius: 10px; padding: 20px 24px;
       color: #991b1b; font-size: 0.9rem;
     }
+
+    /* ── Card action buttons ── */
+    .card-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .regen-btn {
+      padding: 5px 13px;
+      background: #fff; border: 1.5px solid #e0e0e0;
+      border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; color: #555; transition: all 0.12s;
+    }
+    .regen-btn:hover { border-color: #4f7ef8; color: #4f7ef8; }
+
+    .add-paper-btn {
+      padding: 5px 13px;
+      background: #4f7ef8; color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .add-paper-btn:hover { background: #3b6cf4; }
+    .add-paper-btn.added { background: #22c55e; cursor: default; }
+    .add-paper-btn:disabled { background: #22c55e; cursor: default; }
+
+    /* ── Paper tray (fixed bottom) ── */
+    .paper-tray {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 2px solid #4f7ef8;
+      z-index: 100; box-shadow: 0 -4px 16px rgba(0,0,0,0.07);
+    }
+    .tray-bar {
+      display: flex; align-items: center;
+      padding: 10px 32px; gap: 14px;
+      cursor: pointer; user-select: none;
+    }
+    .tray-bar:hover { background: #f8faff; }
+    .tray-count  { font-weight: 700; font-size: 0.92rem; color: #4f7ef8; }
+    .tray-summary { font-size: 0.82rem; color: #999; }
+    .tray-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    .tray-toggle  { font-size: 0.82rem; color: #bbb; }
+
+    .export-btn {
+      padding: 6px 18px;
+      background: #1a1a1a; color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    }
+    .export-btn:hover { background: #333; }
+    .export-btn:disabled { background: #d1d5db; color: #9ca3af; cursor: not-allowed; }
+
+    .clear-paper-btn {
+      padding: 6px 12px;
+      background: #fff; color: #999;
+      border: 1.5px solid #e0e0e0; border-radius: 6px;
+      font-size: 0.8rem; cursor: pointer;
+    }
+    .clear-paper-btn:hover { border-color: #ef4444; color: #ef4444; }
+    .clear-paper-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .tray-body {
+      display: none; border-top: 1px solid #f0f0f0;
+      padding: 0 32px 12px; max-height: 240px; overflow-y: auto;
+    }
+    .tray-body.open { display: block; }
+
+    .tray-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 0; border-bottom: 1px solid #f5f5f5;
+      font-size: 0.84rem;
+    }
+    .tray-item-num {
+      width: 22px; height: 22px; flex-shrink: 0;
+      background: #4f7ef8; color: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 800;
+    }
+    .tray-item-label { font-weight: 600; color: #333; }
+    .tray-item-meta  { font-size: 0.75rem; color: #aaa; margin-left: 4px; }
+    .tray-move-btn {
+      background: #fff; border: 1px solid #e0e0e0;
+      border-radius: 4px; padding: 2px 7px;
+      font-size: 0.75rem; cursor: pointer; color: #777;
+    }
+    .tray-move-btn:hover:not(:disabled) { border-color: #4f7ef8; color: #4f7ef8; }
+    .tray-move-btn:disabled { opacity: 0.3; cursor: default; }
+    .tray-remove-btn {
+      background: none; border: none;
+      font-size: 0.95rem; color: #ccc; cursor: pointer;
+      padding: 2px 6px; border-radius: 4px; margin-left: auto;
+    }
+    .tray-remove-btn:hover { color: #ef4444; background: #fee2e2; }
+    .tray-empty { color: #bbb; font-size: 0.84rem; padding: 12px 0; }
   </style>
 </head>
 <body>
@@ -430,6 +522,8 @@
   let currentItem = null;
   let hintsUsed = 0;
   let startTime = null;
+  let paperQueue = [];
+  let trayOpen = false;
 
   // ── Topic and preset data (source of truth is the server) ────────────────
   const FALLBACK_TOPICS = [
@@ -689,8 +783,14 @@
           <span class="badge badge-${source}">${SOURCE_LABELS[source]||source}</span>
         </div>
       </div>
-      <span class="badge badge-${solv}">Solvability: ${solv} (${score})</span>
+      <div class="card-actions">
+        <span class="badge badge-${solv}">Solvability: ${solv} (${score})</span>
+        <button class="regen-btn"      id="regen-btn">↺ Regenerate</button>
+        <button class="add-paper-btn"  id="add-paper-btn">+ Add to Paper</button>
+      </div>
     `);
+    header.querySelector('#regen-btn').addEventListener('click', regenerate);
+    header.querySelector('#add-paper-btn').addEventListener('click', addCurrentToPaper);
     card.appendChild(header);
 
     // Body
@@ -896,7 +996,130 @@
       delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]
     });
   }
+
+  // ── Regenerate ────────────────────────────────────────
+  function regenerate() {
+    document.getElementById('generate-btn').click();
+  }
+
+  // ── Paper queue ───────────────────────────────────────
+  function addCurrentToPaper() {
+    if (!currentItem) return;
+    const topic = document.getElementById('topic-select').value;
+    paperQueue.push({ ...currentItem, topic, _uid: Date.now() });
+    renderTray();
+    const btn = document.getElementById('add-paper-btn');
+    if (btn) { btn.textContent = '✓ Added'; btn.classList.add('added'); btn.disabled = true; }
+  }
+
+  function removeFromPaper(uid) {
+    paperQueue = paperQueue.filter(q => q._uid !== uid);
+    renderTray();
+  }
+
+  function movePaperItem(uid, dir) {
+    const idx = paperQueue.findIndex(q => q._uid === uid);
+    if (idx < 0) return;
+    const next = idx + dir;
+    if (next < 0 || next >= paperQueue.length) return;
+    [paperQueue[idx], paperQueue[next]] = [paperQueue[next], paperQueue[idx]];
+    renderTray();
+  }
+
+  function clearPaper() {
+    if (paperQueue.length === 0) return;
+    if (!confirm('Remove all questions from the paper?')) return;
+    paperQueue = [];
+    renderTray();
+  }
+
+  function renderTray() {
+    const n = paperQueue.length;
+    const totalMarks = paperQueue.reduce((sum, q) =>
+      sum + (q.parts || []).reduce((s, p) => s + (p.marks || 0), 0), 0);
+
+    document.getElementById('tray-count').textContent   = `Paper: ${n} question${n !== 1 ? 's' : ''}`;
+    document.getElementById('tray-summary').textContent = `· ${totalMarks} marks`;
+    document.getElementById('export-btn').disabled      = n === 0;
+    document.getElementById('clear-paper-btn').disabled = n === 0;
+
+    const list = document.getElementById('tray-list');
+    if (n === 0) {
+      list.innerHTML = '<div class="tray-empty">No questions yet. Generate a question and click "+ Add to Paper".</div>';
+      return;
+    }
+    list.innerHTML = '';
+    paperQueue.forEach((q, i) => {
+      const topicLabel = (q.topic || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const marks = (q.parts || []).reduce((s, p) => s + (p.marks || 0), 0);
+      const uid = q._uid;
+      const row = document.createElement('div');
+      row.className = 'tray-item';
+      row.innerHTML = `
+        <div class="tray-item-num">${i + 1}</div>
+        <span class="tray-item-label">${topicLabel}</span>
+        <span class="tray-item-meta">${q.params?.steps ?? '?'} steps · ${q.params?.cleanliness ?? '?'} · ${marks} marks</span>
+        <button class="tray-move-btn" onclick="movePaperItem(${uid},-1)" ${i===0?'disabled':''}>↑</button>
+        <button class="tray-move-btn" onclick="movePaperItem(${uid},1)"  ${i===n-1?'disabled':''}>↓</button>
+        <button class="tray-remove-btn" onclick="removeFromPaper(${uid})" title="Remove">✕</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function toggleTray() {
+    trayOpen = !trayOpen;
+    document.getElementById('tray-body').classList.toggle('open', trayOpen);
+    document.getElementById('tray-toggle').textContent = trayOpen ? '▼' : '▲';
+  }
+
+  async function exportPaper() {
+    if (paperQueue.length === 0) return;
+    const rawTitle = prompt('Paper title (leave blank for default):', 'Mathematics Practice Paper');
+    if (rawTitle === null) return; // cancelled
+    const config = {
+      title: rawTitle || 'Mathematics Practice Paper',
+      subtitle: 'Edexcel International A Level · Pure Mathematics P2',
+      date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }),
+    };
+    const win = window.open('', '_blank');
+    if (!win) { alert('Allow pop-ups for this site to export the paper.'); return; }
+    win.document.write('<html><body style="font-family:sans-serif;padding:40px;color:#666">Preparing paper…</body></html>');
+    try {
+      const res = await fetch(SERVER + '/paper/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: paperQueue, config }),
+      });
+      const html = await res.text();
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    } catch(e) {
+      win.close();
+      alert('Export failed: ' + e.message);
+    }
+  }
+
+  // Init tray
+  renderTray();
 </script>
+
+<!-- Paper tray -->
+<div class="paper-tray" id="paper-tray">
+  <div class="tray-bar" onclick="toggleTray()">
+    <span class="tray-count"  id="tray-count">Paper: 0 questions</span>
+    <span class="tray-summary" id="tray-summary">· 0 marks</span>
+    <div class="tray-actions" onclick="event.stopPropagation()">
+      <button class="clear-paper-btn" id="clear-paper-btn" disabled onclick="clearPaper()">Clear</button>
+      <button class="export-btn" id="export-btn" disabled onclick="exportPaper()">Export PDF</button>
+    </div>
+    <span class="tray-toggle" id="tray-toggle">▲</span>
+  </div>
+  <div class="tray-body" id="tray-body">
+    <div id="tray-list"></div>
+  </div>
+</div>
 
 </body>
 </html>

@@ -160,6 +160,19 @@ def topics():
     return jsonify(list_topics())
 
 
+@app.route("/paper/print", methods=["POST"])
+def paper_print():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
+    questions = data.get("questions", [])
+    config = data.get("config", {})
+    for q in questions:
+        q["total_marks"] = sum(p.get("marks", 0) for p in q.get("parts", []))
+    total_marks = sum(q["total_marks"] for q in questions)
+    return render_template("paper_print.html", questions=questions, config=config, total_marks=total_marks)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     app.run(debug=_DEV, port=port)

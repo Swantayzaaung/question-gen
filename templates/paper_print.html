@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ config.title or 'Mathematics Practice Paper' }}</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 11pt;
+      color: #000;
+      background: #fff;
+    }
+
+    /* ── No-print toolbar ── */
+    .toolbar {
+      position: sticky; top: 0; z-index: 99;
+      background: #1e293b;
+      padding: 10px 24px;
+      display: flex; align-items: center; gap: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 0.875rem;
+    }
+    .toolbar-title { color: #94a3b8; font-weight: 600; }
+    .toolbar-btn {
+      padding: 7px 18px;
+      border: none; border-radius: 6px;
+      font-size: 0.875rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-print  { background: #4f7ef8; color: #fff; }
+    .btn-print:hover  { background: #3b6cf4; }
+    .btn-close  { background: #334155; color: #cbd5e1; margin-left: auto; }
+    .btn-close:hover  { background: #475569; }
+    .toolbar label {
+      display: flex; align-items: center; gap: 6px;
+      color: #cbd5e1; cursor: pointer; user-select: none;
+    }
+    .toolbar input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; }
+
+    /* ── Page layout ── */
+    .page {
+      max-width: 210mm;
+      margin: 24px auto;
+      padding: 20mm 22mm;
+      background: #fff;
+    }
+
+    /* ── Paper header ── */
+    .paper-header {
+      border: 2.5px solid #000;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .paper-title {
+      font-size: 15pt; font-weight: bold;
+      text-align: center; margin-bottom: 4px;
+    }
+    .paper-subtitle {
+      font-size: 11pt; text-align: center;
+      color: #333; margin-bottom: 14px;
+    }
+    .paper-meta {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6px 20px; font-size: 10pt;
+    }
+    .meta-row { display: flex; gap: 8px; }
+    .meta-key { font-weight: bold; min-width: 90px; }
+    .meta-line {
+      flex: 1; border-bottom: 1px solid #000;
+      min-width: 120px;
+    }
+
+    /* ── Instructions ── */
+    .instructions {
+      border: 1px solid #aaa;
+      padding: 10px 14px;
+      margin-bottom: 24px;
+      font-size: 10pt;
+    }
+    .instructions strong { display: block; margin-bottom: 6px; font-size: 10.5pt; }
+    .instructions ul { margin-left: 18px; line-height: 1.9; }
+
+    /* ── Questions ── */
+    .question-block {
+      margin-bottom: 28px;
+      page-break-inside: avoid;
+    }
+
+    .question-stem {
+      display: flex; gap: 10px;
+      margin-bottom: 10px; font-size: 11pt; line-height: 1.7;
+    }
+    .q-number { font-weight: bold; min-width: 22px; flex-shrink: 0; }
+    .q-text   { flex: 1; }
+
+    .part-block  { margin-left: 26px; margin-bottom: 14px; }
+    .part-header { display: flex; gap: 8px; margin-bottom: 4px; line-height: 1.6; }
+    .part-label  { font-weight: bold; min-width: 18px; flex-shrink: 0; }
+    .part-text   { flex: 1; font-size: 11pt; }
+    .part-marks  {
+      white-space: nowrap; font-size: 10pt;
+      border: 1px solid #aaa; padding: 0 5px;
+      height: fit-content; align-self: flex-start;
+    }
+
+    .work-lines {
+      margin-left: 26px; margin-top: 6px;
+    }
+    .work-line {
+      border-bottom: 1px solid #ccc;
+      height: 22px;
+      margin-bottom: 0;
+    }
+
+    .q-marks-box {
+      text-align: right;
+      font-size: 9pt; color: #555;
+      margin-top: 4px; margin-right: 0;
+    }
+
+    /* ── Total marks row ── */
+    .paper-total {
+      border-top: 2px solid #000;
+      padding-top: 8px; margin-top: 16px;
+      text-align: right; font-weight: bold; font-size: 11pt;
+    }
+
+    /* ── Mark scheme ── */
+    .mark-scheme-section {
+      page-break-before: always;
+      margin-top: 20px;
+    }
+    .ms-heading {
+      font-size: 14pt; font-weight: bold;
+      border-bottom: 2.5px solid #000;
+      padding-bottom: 8px; margin-bottom: 20px;
+      display: flex; justify-content: space-between;
+    }
+    .ms-question { margin-bottom: 22px; page-break-inside: avoid; }
+    .ms-q-label  { font-weight: bold; font-size: 11pt; margin-bottom: 8px; }
+    .ms-step {
+      display: flex; gap: 10px;
+      margin-left: 14px; margin-bottom: 6px;
+      font-size: 10.5pt; line-height: 1.65;
+    }
+    .ms-step-num {
+      width: 20px; height: 20px; flex-shrink: 0;
+      background: #000; color: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 7.5pt; font-weight: bold; margin-top: 3px;
+    }
+    .ms-answer {
+      margin-left: 14px; margin-top: 8px;
+      padding: 5px 10px;
+      border-left: 3px solid #000;
+      background: #f5f5f5;
+      font-weight: bold; font-size: 10.5pt;
+    }
+
+    /* ── Print overrides ── */
+    @media print {
+      .toolbar { display: none; }
+      .page { margin: 0; padding: 15mm 18mm; max-width: none; }
+      body { font-size: 11pt; }
+      .question-block { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toolbar (hidden on print) -->
+<div class="toolbar">
+  <span class="toolbar-title">Paper Preview</span>
+  <button class="toolbar-btn btn-print" onclick="window.print()">Print / Save as PDF</button>
+  <label>
+    <input type="checkbox" id="ms-toggle" checked onchange="document.getElementById('mark-scheme').style.display=this.checked?'':'none'">
+    Include mark scheme
+  </label>
+  <button class="toolbar-btn btn-close" onclick="window.close()">Close</button>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="paper-header">
+    <div class="paper-title">{{ config.title or 'Mathematics Practice Paper' }}</div>
+    <div class="paper-subtitle">{{ config.subtitle or 'Edexcel International A Level · Pure Mathematics P2' }}</div>
+    <div class="paper-meta">
+      <div class="meta-row">
+        <span class="meta-key">Candidate name:</span>
+        <span class="meta-line"></span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Date:</span>
+        <span class="meta-line">{{ config.date or '' }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Centre number:</span>
+        <span class="meta-line"></span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Total marks:</span>
+        <span>{{ total_marks }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions">
+    <strong>Instructions to Candidates</strong>
+    <ul>
+      <li>Answer <strong>all</strong> questions.</li>
+      <li>Show all working clearly in the space provided.</li>
+      <li>The marks for each question are shown in brackets.</li>
+      <li>The total number of marks for this paper is <strong>{{ total_marks }}</strong>.</li>
+    </ul>
+  </div>
+
+  <!-- Questions -->
+  {% for q in questions %}
+  <div class="question-block">
+    <div class="question-stem">
+      <span class="q-number">{{ loop.index }}.</span>
+      <span class="q-text">{{ q.question_text | safe }}</span>
+    </div>
+
+    {% if q.parts %}
+      {% for part in q.parts %}
+      <div class="part-block">
+        <div class="part-header">
+          <span class="part-label">({{ part.part }})</span>
+          <span class="part-text">{{ part.instruction | safe }}</span>
+          <span class="part-marks">({{ part.marks }})</span>
+        </div>
+        <div class="work-lines">
+          {% set line_count = [4, part.marks * 2] | max %}
+          {% for _ in range(line_count) %}
+          <div class="work-line"></div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="work-lines">
+        {% for _ in range(6) %}
+        <div class="work-line"></div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="q-marks-box">{{ q.total_marks }} mark{{ 's' if q.total_marks != 1 else '' }}</div>
+  </div>
+  {% endfor %}
+
+  <div class="paper-total">Total: {{ total_marks }} marks</div>
+
+  <!-- Mark scheme -->
+  <div class="mark-scheme-section" id="mark-scheme">
+    <div class="ms-heading">
+      <span>Mark Scheme</span>
+      <span style="font-weight:normal;font-size:11pt;">{{ config.title or 'Practice Paper' }}</span>
+    </div>
+
+    {% for q in questions %}
+    <div class="ms-question">
+      <div class="ms-q-label">
+        Question {{ loop.index }}
+        <span style="font-weight:normal;font-size:10pt;margin-left:10px;color:#444;">
+          ({{ q.topic | replace('_', ' ') | title }} · {{ q.params.steps if q.params else '?' }} steps · {{ q.total_marks }} marks)
+        </span>
+      </div>
+      {% for step in q.worked_solution %}
+      <div class="ms-step">
+        <div class="ms-step-num">{{ loop.index }}</div>
+        <div>{{ step | safe }}</div>
+      </div>
+      {% endfor %}
+      <div class="ms-answer">Answer: {{ q.final_answer | safe }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+</body>
+</html>
