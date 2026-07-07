@@ -180,6 +180,7 @@
     .badge-approved      { background: #dcfce7; color: #166534; }
     .badge-verified      { background: #d1fae5; color: #065f46; }
     .badge-needs_review  { background: #fef3c7; color: #92400e; }
+    .badge-rejected      { background: #fee2e2; color: #991b1b; }
     .badge-template      { background: #ede9fe; color: #5b21b6; }
     .badge-hybrid        { background: #dbeafe; color: #1e40af; }
     .badge-llm           { background: #fee2e2; color: #991b1b; }
@@ -424,6 +425,96 @@
     }
     .tray-remove-btn:hover { color: #ef4444; background: #fee2e2; }
     .tray-empty { color: #bbb; font-size: 0.84rem; padding: 12px 0; }
+
+    /* ── Auth ── */
+    .auth-area { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .auth-btn {
+      padding: 6px 16px; background: #4f7ef8; color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    }
+    .auth-btn:hover { background: #3b6cf4; }
+    .auth-user { font-size: 0.84rem; color: #333; font-weight: 600; }
+    .auth-role-badge {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 10px;
+      background: #eff3ff; color: #3b6cf4;
+    }
+    .logout-btn {
+      background: none; border: 1px solid #e0e0e0; border-radius: 6px;
+      padding: 5px 12px; font-size: 0.78rem; color: #999; cursor: pointer;
+    }
+    .logout-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal {
+      background: #fff; border-radius: 12px;
+      padding: 28px 32px; width: 340px; max-width: 90vw;
+    }
+    .modal h2 { font-size: 1.1rem; margin-bottom: 16px; }
+    .modal-label {
+      display: block; font-size: 0.8rem; font-weight: 700;
+      color: #555; margin-bottom: 12px;
+    }
+    .modal-label input {
+      display: block; width: 100%; margin-top: 4px;
+      padding: 8px 12px; border: 1.5px solid #e0e0e0; border-radius: 7px;
+      font-size: 0.9rem;
+    }
+    .modal-label input:focus { outline: none; border-color: #4f7ef8; }
+    .role-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+    .role-btn {
+      flex: 1; padding: 8px; border: 1.5px solid #e0e0e0; border-radius: 7px;
+      background: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #555;
+    }
+    .role-btn.active { border-color: #4f7ef8; background: #f0f4ff; color: #2d58d4; }
+    .modal-submit {
+      width: 100%; padding: 10px;
+      background: #4f7ef8; color: #fff; border: none; border-radius: 7px;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-top: 4px;
+    }
+    .modal-submit:hover { background: #3b6cf4; }
+    .auth-switch {
+      display: flex; gap: 6px; margin-top: 14px;
+      font-size: 0.8rem; color: #999;
+    }
+    .auth-switch a { color: #4f7ef8; font-weight: 600; }
+    .auth-error {
+      background: #fee2e2; color: #991b1b;
+      padding: 8px 12px; border-radius: 7px;
+      font-size: 0.8rem; margin-bottom: 12px;
+    }
+
+    /* ── Approve/reject ── */
+    .approve-btn {
+      padding: 5px 13px; background: #22c55e; color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    }
+    .approve-btn:hover { background: #16a34a; }
+    .reject-btn {
+      padding: 5px 13px; background: #fff; color: #991b1b;
+      border: 1.5px solid #fca5a5; border-radius: 6px;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .reject-btn:hover { background: #fee2e2; }
+
+    /* ── Save/load papers ── */
+    .save-paper-btn {
+      padding: 6px 14px; background: #fff; color: #4f7ef8;
+      border: 1.5px solid #4f7ef8; border-radius: 6px;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    }
+    .save-paper-btn:hover { background: #f0f4ff; }
+    .save-paper-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .my-papers-select {
+      padding: 6px 10px; border: 1.5px solid #e0e0e0; border-radius: 6px;
+      font-size: 0.8rem; background: #fff; cursor: pointer; max-width: 180px;
+    }
   </style>
 </head>
 <body>
@@ -431,7 +522,38 @@
 <header>
   <h1>Math Practice</h1>
   <span>Edexcel IAL Pure Mathematics · P2</span>
+  <a href="/classroom" style="margin-left:20px; font-size:0.85rem; color:#4f7ef8; font-weight:600; text-decoration:none">Classroom →</a>
+  <div class="auth-area" id="auth-area">
+    <button class="auth-btn" onclick="openAuthModal()">Log in</button>
+  </div>
 </header>
+
+<!-- Auth modal -->
+<div class="modal-overlay" id="auth-modal" style="display:none">
+  <div class="modal">
+    <h2 id="auth-title">Log in</h2>
+    <div class="auth-error" id="auth-error" style="display:none"></div>
+    <label class="modal-label">Username
+      <input type="text" id="auth-username" autocomplete="username">
+    </label>
+    <label class="modal-label">Password
+      <input type="password" id="auth-password" autocomplete="current-password">
+    </label>
+    <div id="auth-role-row" style="display:none">
+      <div class="modal-label">I am a…</div>
+      <div class="role-toggle">
+        <button class="role-btn active" data-role="teacher" onclick="setAuthRole('teacher', this)">Teacher</button>
+        <button class="role-btn" data-role="student" onclick="setAuthRole('student', this)">Student</button>
+      </div>
+    </div>
+    <button class="modal-submit" id="auth-submit" onclick="submitAuth()">Log in</button>
+    <div class="auth-switch">
+      <span id="auth-switch-text">No account?</span>
+      <a href="#" id="auth-switch-link" onclick="toggleAuthMode(); return false;">Register</a>
+      <a href="#" style="margin-left:auto;color:#bbb" onclick="closeAuthModal(); return false;">Cancel</a>
+    </div>
+  </div>
+</div>
 
 <div class="container">
   <div class="panel">
@@ -524,6 +646,10 @@
   let startTime = null;
   let paperQueue = [];
   let trayOpen = false;
+  let currentUser = null;            // {user_id, username, role} or null
+  let authMode = 'login';            // 'login' | 'register'
+  let authRole = 'teacher';
+  let currentPaper = { id: null, name: null };  // loaded/saved paper identity
 
   // ── Topic and preset data (source of truth is the server) ────────────────
   const FALLBACK_TOPICS = [
@@ -791,6 +917,21 @@
     `);
     header.querySelector('#regen-btn').addEventListener('click', regenerate);
     header.querySelector('#add-paper-btn').addEventListener('click', addCurrentToPaper);
+
+    // Teacher review controls for unverified items
+    if (currentUser && currentUser.role === 'teacher' && status === 'needs_review' && q.item_id) {
+      const actions = header.querySelector('.card-actions');
+      const approveBtn = document.createElement('button');
+      approveBtn.className = 'approve-btn';
+      approveBtn.textContent = '✓ Approve';
+      approveBtn.onclick = () => reviewItem(q.item_id, 'approve', header);
+      const rejectBtn = document.createElement('button');
+      rejectBtn.className = 'reject-btn';
+      rejectBtn.textContent = 'Reject';
+      rejectBtn.onclick = () => reviewItem(q.item_id, 'reject', header);
+      actions.appendChild(approveBtn);
+      actions.appendChild(rejectBtn);
+    }
     card.appendChild(header);
 
     // Body
@@ -1042,6 +1183,7 @@
     document.getElementById('tray-summary').textContent = `· ${totalMarks} marks`;
     document.getElementById('export-btn').disabled      = n === 0;
     document.getElementById('clear-paper-btn').disabled = n === 0;
+    document.getElementById('save-paper-btn').disabled  = n === 0;
 
     const list = document.getElementById('tray-list');
     if (n === 0) {
@@ -1101,8 +1243,187 @@
     }
   }
 
-  // Init tray
-  renderTray();
+  // ── Auth ──────────────────────────────────────────────
+  async function checkAuth() {
+    try {
+      const res = await fetch(SERVER + '/auth/me');
+      currentUser = res.ok ? await res.json() : null;
+    } catch (_) { currentUser = null; }
+    renderAuthArea();
+    renderTray();
+  }
+
+  function renderAuthArea() {
+    const area = document.getElementById('auth-area');
+    if (currentUser) {
+      area.innerHTML = `
+        <span class="auth-user">${safeText(currentUser.username)}</span>
+        <span class="auth-role-badge">${safeText(currentUser.role)}</span>
+        <button class="logout-btn" onclick="logout()">Log out</button>
+      `;
+    } else {
+      area.innerHTML = '<button class="auth-btn" onclick="openAuthModal()">Log in</button>';
+    }
+    const isTeacher = currentUser && currentUser.role === 'teacher';
+    document.getElementById('save-paper-btn').style.display  = isTeacher ? '' : 'none';
+    document.getElementById('my-papers-select').style.display = isTeacher ? '' : 'none';
+    if (isTeacher) refreshMyPapers();
+  }
+
+  function openAuthModal() {
+    document.getElementById('auth-modal').style.display = '';
+    document.getElementById('auth-error').style.display = 'none';
+    document.getElementById('auth-username').focus();
+  }
+  function closeAuthModal() {
+    document.getElementById('auth-modal').style.display = 'none';
+  }
+  function toggleAuthMode() {
+    authMode = authMode === 'login' ? 'register' : 'login';
+    document.getElementById('auth-title').textContent       = authMode === 'login' ? 'Log in' : 'Register';
+    document.getElementById('auth-submit').textContent      = authMode === 'login' ? 'Log in' : 'Create account';
+    document.getElementById('auth-switch-text').textContent = authMode === 'login' ? 'No account?' : 'Have an account?';
+    document.getElementById('auth-switch-link').textContent = authMode === 'login' ? 'Register' : 'Log in';
+    document.getElementById('auth-role-row').style.display  = authMode === 'register' ? '' : 'none';
+    document.getElementById('auth-error').style.display = 'none';
+  }
+  function setAuthRole(role, btn) {
+    authRole = role;
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  async function submitAuth() {
+    const username = document.getElementById('auth-username').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errBox = document.getElementById('auth-error');
+    const body = authMode === 'register'
+      ? { username, password, role: authRole }
+      : { username, password };
+    try {
+      const res = await fetch(SERVER + '/auth/' + authMode, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errBox.textContent = data.error || 'Something went wrong';
+        errBox.style.display = '';
+        return;
+      }
+      currentUser = data;
+      closeAuthModal();
+      renderAuthArea();
+      renderTray();
+    } catch (e) {
+      errBox.textContent = 'Request failed: ' + e.message;
+      errBox.style.display = '';
+    }
+  }
+
+  async function logout() {
+    try { await fetch(SERVER + '/auth/logout', { method: 'POST' }); } catch (_) {}
+    currentUser = null;
+    currentPaper = { id: null, name: null };
+    renderAuthArea();
+    renderTray();
+  }
+
+  // ── Approve / reject (teacher) ────────────────────────
+  async function reviewItem(itemId, action, cardHeader) {
+    try {
+      const res = await fetch(SERVER + `/item/${encodeURIComponent(itemId)}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || 'Review failed'); return; }
+      // Update badges in place
+      const statusBadge = cardHeader.querySelector('.badge-needs_review, .badge-approved, .badge-rejected');
+      if (statusBadge) {
+        statusBadge.className = 'badge badge-' + data.status;
+        statusBadge.textContent = data.status === 'approved' ? 'Approved' : 'Rejected';
+      }
+      cardHeader.querySelectorAll('.approve-btn, .reject-btn').forEach(b => b.remove());
+      if (currentItem) currentItem.status = data.status;
+      const warn = document.querySelector('.verification-note');
+      if (warn && data.status === 'approved') warn.remove();
+    } catch (e) {
+      alert('Review failed: ' + e.message);
+    }
+  }
+
+  // ── Saved papers (teacher) ────────────────────────────
+  async function refreshMyPapers() {
+    try {
+      const res = await fetch(SERVER + '/papers');
+      if (!res.ok) return;
+      const papers = await res.json();
+      const sel = document.getElementById('my-papers-select');
+      sel.innerHTML = '<option value="">My papers…</option>';
+      papers.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.saved_paper_id;
+        opt.textContent = `${p.name} (${p.question_count})`;
+        sel.appendChild(opt);
+      });
+    } catch (_) {}
+  }
+
+  async function saveCurrentPaper() {
+    if (paperQueue.length === 0) return;
+    const defaultName = currentPaper.name || 'Practice Paper ' + new Date().toLocaleDateString('en-GB');
+    const name = prompt('Paper name:', defaultName);
+    if (name === null) return;
+    const body = { name: name || defaultName, questions: paperQueue };
+    // Re-saving a loaded paper updates it; Save after rename creates on server side only if id cleared
+    if (currentPaper.id) body.saved_paper_id = currentPaper.id;
+    try {
+      const res = await fetch(SERVER + '/papers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || 'Save failed'); return; }
+      currentPaper = { id: data.saved_paper_id, name: data.name };
+      refreshMyPapers();
+      const btn = document.getElementById('save-paper-btn');
+      btn.textContent = '✓ Saved';
+      setTimeout(() => { btn.textContent = 'Save'; }, 1500);
+    } catch (e) {
+      alert('Save failed: ' + e.message);
+    }
+  }
+
+  async function loadSavedPaper(paperId) {
+    if (!paperId) return;
+    if (paperQueue.length > 0 && !confirm('Replace the current paper with the saved one?')) {
+      document.getElementById('my-papers-select').value = '';
+      return;
+    }
+    try {
+      const res = await fetch(SERVER + '/papers/' + encodeURIComponent(paperId));
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || 'Load failed'); return; }
+      paperQueue = data.questions;
+      currentPaper = { id: data.saved_paper_id, name: data.name };
+      renderTray();
+      if (!trayOpen) toggleTray();
+    } catch (e) {
+      alert('Load failed: ' + e.message);
+    } finally {
+      document.getElementById('my-papers-select').value = '';
+    }
+  }
+
+  // Init — the paper tray markup sits below this script, so wait for the full DOM
+  document.addEventListener('DOMContentLoaded', () => {
+    renderTray();
+    checkAuth();
+  });
 </script>
 
 <!-- Paper tray -->
@@ -1111,6 +1432,12 @@
     <span class="tray-count"  id="tray-count">Paper: 0 questions</span>
     <span class="tray-summary" id="tray-summary">· 0 marks</span>
     <div class="tray-actions" onclick="event.stopPropagation()">
+      <select class="my-papers-select" id="my-papers-select" style="display:none"
+              onchange="loadSavedPaper(this.value)">
+        <option value="">My papers…</option>
+      </select>
+      <button class="save-paper-btn" id="save-paper-btn" style="display:none" disabled
+              onclick="saveCurrentPaper()">Save</button>
       <button class="clear-paper-btn" id="clear-paper-btn" disabled onclick="clearPaper()">Clear</button>
       <button class="export-btn" id="export-btn" disabled onclick="exportPaper()">Export PDF</button>
     </div>

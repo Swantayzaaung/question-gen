@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classroom — Math Practice</title>
+  <link rel="stylesheet" href="/static/classroom.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.3/dist/purify.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>Classroom</h1>
+  <span class="subtitle">Edexcel IAL Pure Mathematics</span>
+  <nav><a href="/">← Question generator</a></nav>
+  <div class="auth-area" id="auth-area"></div>
+</header>
+
+<div class="container">
+  <div id="login-prompt" style="display:none">
+    <div class="panel" style="text-align:center; padding:44px">
+      <h2>Log in to use the classroom</h2>
+      <p style="color:#999; font-size:0.9rem; margin:10px 0 18px">
+        Teachers manage classes and assignments here; students join classes and complete work.
+      </p>
+      <a class="btn" href="/" style="text-decoration:none">Go to main page to log in</a>
+    </div>
+  </div>
+
+  <div id="view-classes" style="display:none"></div>
+  <div id="view-class" style="display:none"></div>
+  <div id="view-submissions" style="display:none"></div>
+  <div id="view-grading" style="display:none"></div>
+</div>
+
+<script>
+const SERVER = window.location.origin;
+let me = null;
+
+// ── Utilities ───────────────────────────────────────────
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+// Sanitize UNTRUSTED content (question text, instructions — may contain LLM HTML).
+// Never pass structural markup through this: DOMPurify strips onclick handlers.
+function mathHTML(s) {
+  return (typeof DOMPurify !== 'undefined')
+    ? DOMPurify.sanitize(String(s ?? ''))
+    : esc(s);
+}
+function renderMath(el) {
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(el, { delimiters: [
+      {left:'$$',right:'$$',display:true}, {left:'$',right:'$',display:false}
+    ]});
+  }
+}
+async function api(path, opts = {}) {
+  const res = await fetch(SERVER + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+function show(viewId) {
+  ['login-prompt','view-classes','view-class','view-submissions','view-grading']
+    .forEach(id => document.getElementById(id).style.display = id === viewId ? '' : 'none');
+  window.scrollTo(0, 0);
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}); }
+  catch { return iso; }
+}
+function statusBadge(status) {
+  const map = {
+    in_progress: ['badge-gray', 'In progress'],
+    submitted:   ['badge-yellow', 'Submitted'],
+    graded:      ['badge-green', 'Graded'],
+  };
+  const [cls, label] = map[status] || ['badge-gray', status || 'Not started'];
+  return `<span class="badge ${cls}">${esc(label)}</span>`;
+}
+
+// ── Auth header ─────────────────────────────────────────
+async function checkAuth() {
+  try {
+    const res = await fetch(SERVER + '/auth/me');
+    me = res.ok ? await res.json() : null;
+  } catch { me = null; }
+  const area = document.getElementById('auth-area');
+  if (me) {
+    area.innerHTML = `
+      <span class="auth-user">${esc(me.username)}</span>
+      <span class="auth-role-badge">${esc(me.role)}</span>
+      <button class="logout-btn" onclick="logout()">Log out</button>`;
+  } else {
+    area.innerHTML = '';
+  }
+}
+async function logout() {
+  await fetch(SERVER + '/auth/logout', { method: 'POST' }).catch(() => {});
+  window.location.href = '/';
+}
+
+// ── Classes list ────────────────────────────────────────
+async function loadClasses() {
+  show('view-classes');
+  const v = document.getElementById('view-classes');
+  v.innerHTML = '<div class="loading"><div class="spinner"></div>Loading classes…</div>';
+
+  let classes;
+  try { classes = await api('/classes'); }
+  catch (e) { v.innerHTML = `<div class="error-box">${esc(e.message)}</div>`; return; }
+
+  let html = '';
+  if (me.role === 'teacher') {
+    html += `
+      <div class="panel">
+        <h2>Create a class</h2>
+        <div class="form-row">
+          <input type="text" id="new-class-name" placeholder="Class name (e.g. P2 Morning Batch)" style="flex:1; min-width:220px">
+          <input type="text" id="new-class-level" placeholder="Level (optional)" style="width:160px">
+          <button class="btn" onclick="createClass()">Create</button>
+        </div>
+      </div>`;
+  } else {
+    html += `
+      <div class="panel">
+        <h2>Join a class</h2>
+        <div class="form-row">
+          <input type="text" id="join-code-input" placeholder="Enter 6-character join code" maxlength="6"
+                 style="width:240px; font-family:'Courier New',monospace; letter-spacing:0.15em; text-transform:uppercase">
+          <button class="btn" onclick="joinClass()">Join</button>
+        </div>
+        <div id="join-feedback"></div>
+      </div>`;
+  }
+
+  html += '<div class="panel"><h2>' + (me.role === 'teacher' ? 'My classes' : 'Enrolled classes') + '</h2>';
+  if (!classes.length) {
+    html += `<div class="empty">${me.role === 'teacher'
+      ? 'No classes yet — create one above.'
+      : 'Not enrolled in any class yet. Ask your teacher for a join code.'}</div>`;
+  } else {
+    html += '<div class="card-list">';
+    for (const c of classes) {
+      const sub = me.role === 'teacher'
+        ? `${c.student_count} student${c.student_count !== 1 ? 's' : ''} · ${c.assignment_count} assignment${c.assignment_count !== 1 ? 's' : ''} · code <b>${esc(c.join_code)}</b>`
+        : `Teacher: ${esc(c.teacher_name)} · ${c.assignment_count} assignment${c.assignment_count !== 1 ? 's' : ''}`;
+      html += `
+        <div class="item-card" onclick="loadClass('${esc(c.class_id)}')">
+          <div class="grow">
+            <div class="item-title">${esc(c.name)}</div>
+            <div class="item-sub">${c.level ? esc(c.level) + ' · ' : ''}${sub}</div>
+          </div>
+          <span class="badge badge-blue">Open →</span>
+        </div>`;
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  v.innerHTML = html;
+}
+
+async function createClass() {
+  const name = document.getElementById('new-class-name').value.trim();
+  const level = document.getElementById('new-class-level').value.trim();
+  if (!name) return alert('Enter a class name.');
+  try {
+    await api('/classes', { method: 'POST', body: { name, level } });
+    loadClasses();
+  } catch (e) { alert(e.message); }
+}
+
+async function joinClass() {
+  const code = document.getElementById('join-code-input').value.trim();
+  const fb = document.getElementById('join-feedback');
+  if (!code) return;
+  try {
+    const r = await api('/classes/join', { method: 'POST', body: { join_code: code } });
+    fb.innerHTML = (`<div class="info-box" style="margin-top:10px">${r.already_enrolled ? 'Already enrolled in' : 'Joined'} <b>${esc(r.name)}</b>.</div>`);
+    loadClasses();
+  } catch (e) {
+    fb.innerHTML = (`<div class="error-box" style="margin-top:10px">${esc(e.message)}</div>`);
+  }
+}
+
+// ── Class detail ────────────────────────────────────────
+async function loadClass(classId) {
+  show('view-class');
+  const v = document.getElementById('view-class');
+  v.innerHTML = '<div class="loading"><div class="spinner"></div>Loading class…</div>';
+
+  let c;
+  try { c = await api('/classes/' + classId); }
+  catch (e) { v.innerHTML = `<div class="error-box">${esc(e.message)}</div>`; return; }
+
+  let html = `<button class="back-link" onclick="loadClasses()">← All classes</button>`;
+
+  if (me.role === 'teacher') {
+    html += `
+      <div class="panel">
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+          <h2 style="margin:0">${esc(c.name)}</h2>
+          ${c.level ? `<span class="badge badge-blue">${esc(c.level)}</span>` : ''}
+          <span style="margin-left:auto; font-size:0.82rem; color:#999">Join code:</span>
+          <span class="join-code">${esc(c.join_code)}</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Assignments</h2>
+        <div class="form-row" style="margin-bottom:16px">
+          <select id="assign-paper-select" style="flex:1; min-width:200px">
+            <option value="">Choose a saved paper…</option>
+          </select>
+          <input type="text" id="assign-title" placeholder="Assignment title" style="flex:1; min-width:180px">
+          <input type="date" id="assign-due">
+          <button class="btn" onclick="createAssignment('${esc(c.class_id)}')">Assign</button>
+        </div>
+        <div id="assign-feedback"></div>
+        <div id="assignments-list"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Roster (${c.roster.length})</h2>
+        <div id="roster-list"></div>
+      </div>`;
+    v.innerHTML = html;
+
+    // Assignments list
+    const al = document.getElementById('assignments-list');
+    if (!c.assignments.length) {
+      al.innerHTML = '<div class="empty">No assignments yet. Save a paper in the generator, then assign it here.</div>';
+    } else {
+      al.innerHTML = ('<div class="card-list">' + c.assignments.map(a => `
+        <div class="item-card" onclick="loadSubmissions('${esc(a.assignment_id)}')">
+          <div class="grow">
+            <div class="item-title">${esc(a.title)}</div>
+            <div class="item-sub">${a.question_count} question${a.question_count !== 1 ? 's' : ''}
+              · due ${fmtDate(a.due_date)} · ${a.submission_count} submission${a.submission_count !== 1 ? 's' : ''}</div>
+          </div>
+          <span class="badge badge-blue">Submissions →</span>
+        </div>`).join('') + '</div>');
+    }
+
+    // Roster
+    const rl = document.getElementById('roster-list');
+    if (!c.roster.length) {
+      rl.innerHTML = '<div class="empty">No students yet. Share the join code above.</div>';
+    } else {
+      rl.innerHTML = (`<table class="data"><thead><tr>
+        <th>Student</th><th>Joined</th><th></th></tr></thead><tbody>` +
+        c.roster.map(s => `<tr>
+          <td><b>${esc(s.username)}</b></td>
+          <td>${fmtDate(s.joined_at)}</td>
+          <td style="text-align:right"><button class="btn btn-danger" style="padding:4px 12px; font-size:0.76rem"
+              onclick="removeStudent('${esc(c.class_id)}','${esc(s.user_id)}','${esc(s.username)}')">Remove</button></td>
+        </tr>`).join('') + '</tbody></table>');
+    }
+
+    // Populate saved papers dropdown
+    try {
+      const papers = await api('/papers');
+      const sel = document.getElementById('assign-paper-select');
+      papers.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.saved_paper_id;
+        opt.textContent = `${p.name} (${p.question_count} questions)`;
+        sel.appendChild(opt);
+      });
+    } catch {}
+  } else {
+    // Student view
+    html += `
+      <div class="panel">
+        <h2>${esc(c.name)}</h2>
+      </div>
+      <div class="panel">
+        <h2>Assignments</h2>
+        <div id="assignments-list"></div>
+      </div>`;
+    v.innerHTML = html;
+
+    const al = document.getElementById('assignments-list');
+    if (!c.assignments.length) {
+      al.innerHTML = '<div class="empty">Nothing assigned yet.</div>';
+    } else {
+      al.innerHTML = ('<div class="card-list">' + c.assignments.map(a => {
+        const score = a.my_submission_status === 'graded'
+          ? ` · score ${a.my_final_total}`
+          : (a.my_submission_status === 'submitted' ? ` · auto ${a.my_auto_total}` : '');
+        return `
+        <div class="item-card" onclick="window.location.href='/assignment/${esc(a.assignment_id)}'">
+          <div class="grow">
+            <div class="item-title">${esc(a.title)}</div>
+            <div class="item-sub">${a.question_count} question${a.question_count !== 1 ? 's' : ''}
+              · due ${fmtDate(a.due_date)}${score}</div>
+          </div>
+          ${statusBadge(a.my_submission_status)}
+        </div>`;
+      }).join('') + '</div>');
+    }
+  }
+}
+
+async function createAssignment(classId) {
+  const paperId = document.getElementById('assign-paper-select').value;
+  const title = document.getElementById('assign-title').value.trim();
+  const due = document.getElementById('assign-due').value;
+  const fb = document.getElementById('assign-feedback');
+  if (!paperId) return alert('Choose a saved paper first.');
+  if (!title) return alert('Give the assignment a title.');
+  try {
+    const r = await api(`/classes/${classId}/assignments`, {
+      method: 'POST',
+      body: { title, saved_paper_id: paperId, due_date: due || null },
+    });
+    fb.innerHTML = r.warning
+      ? (`<div class="warn-box">${esc(r.warning)}</div>`)
+      : '';
+    loadClass(classId);
+  } catch (e) { alert(e.message); }
+}
+
+async function removeStudent(classId, studentId, name) {
+  if (!confirm(`Remove ${name} from this class?`)) return;
+  try {
+    await api(`/classes/${classId}/students/${studentId}`, { method: 'DELETE' });
+    loadClass(classId);
+  } catch (e) { alert(e.message); }
+}
+
+// ── Submissions list (teacher) ──────────────────────────
+async function loadSubmissions(assignmentId) {
+  show('view-submissions');
+  const v = document.getElementById('view-submissions');
+  v.innerHTML = '<div class="loading"><div class="spinner"></div>Loading submissions…</div>';
+
+  let d, a;
+  try {
+    [d, a] = await Promise.all([
+      api(`/assignments/${assignmentId}/submissions`),
+      api(`/assignments/${assignmentId}`),
+    ]);
+  } catch (e) { v.innerHTML = `<div class="error-box">${esc(e.message)}</div>`; return; }
+
+  let html = `<button class="back-link" onclick="loadClass('${esc(a.class_id)}')">← Back to class</button>
+    <div class="panel">
+      <h2>${esc(d.title)} — submissions</h2>`;
+  if (!d.submissions.length) {
+    html += '<div class="empty">No submissions yet.</div>';
+  } else {
+    html += `<table class="data"><thead><tr>
+      <th>Student</th><th>Status</th><th>Auto score</th><th>Final score</th><th>Submitted</th></tr></thead><tbody>`;
+    for (const s of d.submissions) {
+      const clickable = s.status !== 'in_progress';
+      html += `<tr class="${clickable ? 'clickable' : ''}" ${clickable ? `onclick="loadGrading('${esc(s.submission_id)}','${esc(assignmentId)}')"` : ''}>
+        <td><b>${esc(s.student_name)}</b></td>
+        <td>${statusBadge(s.status)}</td>
+        <td>${s.auto_total ?? '—'} / ${d.max_total}</td>
+        <td>${s.final_total ?? '—'}</td>
+        <td>${fmtDate(s.submitted_at)}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+  v.innerHTML = html;
+}
+
+// ── Grading view (teacher) ──────────────────────────────
+async function loadGrading(submissionId, assignmentId) {
+  show('view-grading');
+  const v = document.getElementById('view-grading');
+  v.innerHTML = '<div class="loading"><div class="spinner"></div>Loading submission…</div>';
+
+  let d;
+  try { d = await api(`/submissions/${submissionId}`); }
+  catch (e) { v.innerHTML = `<div class="error-box">${esc(e.message)}</div>`; return; }
+
+  const sub = d.submission;
+  let html = `<button class="back-link" onclick="loadSubmissions('${esc(assignmentId)}')">← All submissions</button>
+    <div class="panel">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+        <h2 style="margin:0">${esc(d.title)}</h2>
+        ${statusBadge(sub.status)}
+        <span class="score-pill" style="margin-left:auto">Auto: ${sub.auto_total ?? '—'}${sub.final_total != null ? ` · Final: ${sub.final_total}` : ''}</span>
+      </div>
+    </div>`;
+
+  d.answers.forEach((ans, i) => {
+    const q = d.questions[ans.question_index] || {};
+    const parts = (q.parts || []).map(p =>
+      `<div class="q-part"><span class="label">(${esc(p.part)})</span><span>${mathHTML(p.instruction || '')}</span></div>`).join('');
+    html += `
+      <div class="question-block" data-qi="${ans.question_index}">
+        <div class="q-header">
+          <div class="q-num">${ans.question_index + 1}</div>
+          <div class="q-marks">${ans.max_score} marks</div>
+        </div>
+        <div class="q-text">${mathHTML(q.question_text || '')}</div>
+        ${parts}
+        <div class="result-row ${ans.is_correct ? 'result-correct' : 'result-incorrect'}">
+          Student answered: <b>${esc(ans.submitted_answer || '(blank)')}</b>
+          — auto-marked ${ans.is_correct ? 'correct' : 'incorrect'} (${ans.auto_score}/${ans.max_score}).
+          Model answer: <b>${esc(q.final_answer ?? '—')}</b>
+          ${(ans.detected_misconceptions || []).length
+            ? `<div style="margin-top:4px; font-size:0.8rem">Possible misconceptions: ${ans.detected_misconceptions.map(esc).join(', ')}</div>` : ''}
+        </div>
+        <div class="grade-controls">
+          <label class="form-label">Override score
+            <input type="number" class="override-score" min="0" max="${ans.max_score}" step="0.5"
+                   value="${ans.teacher_score ?? ''}" placeholder="${ans.auto_score}">
+          </label>
+          <textarea class="override-comment" placeholder="Comment / correction for the student…">${esc(ans.teacher_comment || '')}</textarea>
+        </div>
+      </div>`;
+  });
+
+  html += `
+    <div class="panel" style="display:flex; gap:12px; justify-content:flex-end; align-items:center">
+      <span id="publish-feedback" style="font-size:0.84rem; color:#166534"></span>
+      <button class="btn btn-green" onclick="publishGrades('${esc(submissionId)}','${esc(assignmentId)}')">
+        Publish grades to student
+      </button>
+    </div>`;
+
+  v.innerHTML = html;
+  renderMath(v);
+}
+
+async function publishGrades(submissionId, assignmentId) {
+  const overrides = [];
+  document.querySelectorAll('#view-grading .question-block').forEach(block => {
+    const qi = parseInt(block.dataset.qi);
+    const scoreRaw = block.querySelector('.override-score').value.trim();
+    const comment = block.querySelector('.override-comment').value.trim();
+    const o = { question_index: qi };
+    if (scoreRaw !== '') o.teacher_score = parseFloat(scoreRaw);
+    if (comment) o.teacher_comment = comment;
+    if (o.teacher_score !== undefined || o.teacher_comment) overrides.push(o);
+  });
+  try {
+    const r = await api(`/submissions/${submissionId}/grade`, {
+      method: 'POST', body: { overrides },
+    });
+    document.getElementById('publish-feedback').textContent =
+      `Published — final score ${r.final_total}`;
+    setTimeout(() => loadSubmissions(assignmentId), 900);
+  } catch (e) { alert(e.message); }
+}
+
+// ── Init ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await checkAuth();
+  if (!me) { show('login-prompt'); return; }
+  loadClasses();
+});
+</script>
+
+</body>
+</html>

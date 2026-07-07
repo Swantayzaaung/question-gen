@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assignment — Math Practice</title>
+  <link rel="stylesheet" href="/static/classroom.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.3/dist/purify.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>Assignment</h1>
+  <span class="subtitle" id="assignment-title-header"></span>
+  <nav><a href="/classroom">← Classroom</a></nav>
+  <div class="auth-area" id="auth-area"></div>
+</header>
+
+<div class="container">
+  <div id="content">
+    <div class="loading"><div class="spinner"></div>Loading assignment…</div>
+  </div>
+</div>
+
+<script>
+const SERVER = window.location.origin;
+const ASSIGNMENT_ID = {{ assignment_id | tojson }};
+let me = null;
+let assignment = null;
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+// Sanitize UNTRUSTED content only (question text, instructions, solutions).
+// Never sanitize structural markup: DOMPurify strips event handler attributes.
+function mathHTML(s) {
+  return (typeof DOMPurify !== 'undefined')
+    ? DOMPurify.sanitize(String(s ?? ''))
+    : esc(s);
+}
+function renderMath(el) {
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(el, { delimiters: [
+      {left:'$$',right:'$$',display:true}, {left:'$',right:'$',display:false}
+    ]});
+  }
+}
+async function api(path, opts = {}) {
+  const res = await fetch(SERVER + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch(SERVER + '/auth/me');
+    me = res.ok ? await res.json() : null;
+  } catch { me = null; }
+  const area = document.getElementById('auth-area');
+  if (me) {
+    area.innerHTML = `
+      <span class="auth-user">${esc(me.username)}</span>
+      <span class="auth-role-badge">${esc(me.role)}</span>`;
+  }
+}
+
+function questionHTML(q, i, extra = '') {
+  const marks = (q.parts || []).reduce((s, p) => s + (p.marks || 0), 0) || 1;
+  const parts = (q.parts || []).map(p =>
+    `<div class="q-part"><span class="label">(${esc(p.part)})</span><span>${mathHTML(p.instruction || '')}</span>
+     <span style="margin-left:auto; color:#aaa; font-size:0.78rem">[${p.marks}]</span></div>`).join('');
+  return `
+    <div class="question-block" data-qi="${i}">
+      <div class="q-header">
+        <div class="q-num">${i + 1}</div>
+        <div class="q-marks">${marks} mark${marks !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="q-text">${mathHTML(q.question_text || '')}</div>
+      ${parts}
+      ${extra}
+    </div>`;
+}
+
+// ── Taking view ─────────────────────────────────────────
+function renderTakingView() {
+  const c = document.getElementById('content');
+  let html = `
+    <div class="panel">
+      <h2>${esc(assignment.title)}</h2>
+      <div class="item-sub" style="margin-top:4px">
+        ${assignment.questions.length} question${assignment.questions.length !== 1 ? 's' : ''}
+        ${assignment.due_date ? ' · due ' + esc(new Date(assignment.due_date).toLocaleDateString('en-GB')) : ''}
+      </div>
+    </div>`;
+
+  assignment.questions.forEach((q, i) => {
+    html += questionHTML(q, i, `
+      <div class="answer-input-row">
+        <label class="form-label">Answer</label>
+        <input type="text" class="student-answer" data-qi="${i}"
+               placeholder="e.g. 42, 3/2, 2*sqrt(3)">
+      </div>`);
+  });
+
+  html += `
+    <div class="panel" style="display:flex; justify-content:flex-end; gap:12px; align-items:center">
+      <span style="font-size:0.82rem; color:#999">You can submit once — check your answers first.</span>
+      <button class="btn btn-green" id="submit-btn" onclick="submitAnswers()">Submit assignment</button>
+    </div>`;
+
+  c.innerHTML = html;
+  renderMath(c);
+}
+
+async function submitAnswers() {
+  const inputs = [...document.querySelectorAll('.student-answer')];
+  const blank = inputs.filter(inp => !inp.value.trim()).length;
+  if (blank && !confirm(`${blank} answer${blank !== 1 ? 's are' : ' is'} blank. Submit anyway?`)) return;
+
+  const answers = [];
+  inputs.forEach(inp => { answers[parseInt(inp.dataset.qi)] = inp.value.trim(); });
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  try {
+    const r = await api(`/assignments/${ASSIGNMENT_ID}/submit`, {
+      method: 'POST', body: { answers },
+    });
+    renderResults(r.answers, r.solutions, {
+      status: 'submitted', auto_total: r.auto_total, max_total: r.max_total,
+    }, assignment.questions);
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Submit assignment';
+  }
+}
+
+// ── Results view ────────────────────────────────────────
+function renderResults(answers, solutions, sub, questions) {
+  const c = document.getElementById('content');
+  const solMap = {};
+  (solutions || []).forEach(s => { solMap[s.question_index] = s; });
+
+  const graded = sub.status === 'graded';
+  const total = graded ? sub.final_total : sub.auto_total;
+  const maxTotal = sub.max_total ?? answers.reduce((s, a) => s + (a.max_score || 0), 0);
+
+  let html = `
+    <div class="panel">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+        <h2 style="margin:0">${esc(assignment.title)}</h2>
+        <span class="badge ${graded ? 'badge-green' : 'badge-yellow'}">
+          ${graded ? 'Graded by teacher' : 'Submitted — awaiting teacher review'}</span>
+        <span class="score-pill" style="margin-left:auto">${total ?? '—'} / ${maxTotal}</span>
+      </div>
+      ${!graded ? '<div class="info-box" style="margin-top:12px">Scores below are automatic. Your teacher may adjust them and add comments.</div>' : ''}
+    </div>`;
+
+  answers.forEach(ans => {
+    const i = ans.question_index;
+    const q = questions[i] || {};
+    const score = graded && ans.teacher_score != null ? ans.teacher_score : ans.auto_score;
+    const overridden = graded && ans.teacher_score != null && ans.teacher_score !== ans.auto_score;
+    const sol = solMap[i];
+
+    let extra = `
+      <div class="result-row ${ans.is_correct || (graded && score > 0) ? 'result-correct' : 'result-incorrect'}">
+        Your answer: <b>${esc(ans.submitted_answer || '(blank)')}</b>
+        — ${score}/${ans.max_score}${overridden ? ` (auto: ${ans.auto_score}, adjusted by teacher)` : ''}
+      </div>`;
+    if (graded && ans.teacher_comment) {
+      extra += `<div class="teacher-note"><b>Teacher:</b> ${esc(ans.teacher_comment)}</div>`;
+    }
+    if (sol && sol.final_answer != null) {
+      const steps = (sol.worked_solution || []).map((s, n) => `<div>${n + 1}. ${mathHTML(s)}</div>`).join('');
+      extra += `<div class="solution-box"><b>Answer:</b> ${mathHTML(sol.final_answer)}${steps ? '<div style="margin-top:6px">' + steps + '</div>' : ''}</div>`;
+    }
+    html += questionHTML(q, i, extra);
+  });
+
+  c.innerHTML = html;
+  renderMath(c);
+  window.scrollTo(0, 0);
+}
+
+// ── Init ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await checkAuth();
+  const c = document.getElementById('content');
+  if (!me) {
+    c.innerHTML = '<div class="panel" style="text-align:center; padding:40px"><h2>Please log in first</h2><p style="margin-top:10px"><a class="btn" href="/" style="text-decoration:none">Go to main page</a></p></div>';
+    return;
+  }
+  if (me.role !== 'student') {
+    window.location.href = '/classroom';
+    return;
+  }
+  try {
+    assignment = await api('/assignments/' + ASSIGNMENT_ID);
+    document.getElementById('assignment-title-header').textContent = assignment.title;
+    if (assignment.my_submission_status && assignment.my_submission_status !== 'in_progress') {
+      const d = await api('/submissions/' + assignment.my_submission_id);
+      renderResults(d.answers, d.solutions, {
+        status: d.submission.status,
+        auto_total: d.submission.auto_total,
+        final_total: d.submission.final_total,
+      }, d.questions);
+    } else {
+      renderTakingView();
+    }
+  } catch (e) {
+    c.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
+  }
+});
+</script>
+
+</body>
+</html>

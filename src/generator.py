@@ -322,6 +322,29 @@ def generate_question(topic: str, steps: int = 2, cleanliness: str = "clean",
     result["source"] = "llm"
     # Mark clearly that this is unverified
     result["verification_note"] = "LLM-only generation. Not deterministically verified. Do not treat as approved."
+
+    # Store so answer submission and teacher approval work on LLM items too
+    try:
+        from schemas import GeneratedItem, QuestionPart
+        item = GeneratedItem(
+            item_id=f"llm_{topic}_{uuid.uuid4().hex[:8]}",
+            source="llm",
+            topic=topic,
+            primary_skill=topic,
+            question_text=result.get("question_text", ""),
+            parts=[QuestionPart(**p) for p in result.get("parts", [])],
+            canonical_solution=result.get("worked_solution", []),
+            final_answer=str(result.get("final_answer", "")),
+            answer_type=result.get("answer_type", "expression"),
+            significant_steps=int(result.get("significant_steps", steps) or steps),
+            marks=sum(p.get("marks", 0) for p in result.get("parts", [])),
+            status="needs_review",
+        )
+        store_generated_item(item)
+        result["item_id"] = item.item_id
+    except Exception as e:
+        print(f"  Warning: could not store LLM item: {e}")
+
     return result
 
 
