@@ -26,8 +26,10 @@ def init_db(db_path: str = None):
             session         TEXT,
             unit            TEXT,
             syllabus        TEXT,
+            spec_version    TEXT,
             paper_file      TEXT,
             ms_file         TEXT,
+            er_file         TEXT,
             parsed_at       TEXT
         );
 
@@ -219,6 +221,14 @@ def init_db(db_path: str = None):
         CREATE INDEX IF NOT EXISTS idx_subs_student       ON submissions(student_id);
         CREATE INDEX IF NOT EXISTS idx_sub_answers_sub    ON submission_answers(submission_id);
     """)
+
+    # Lightweight migrations: add columns to `papers` if an older DB predates them.
+    # (CREATE TABLE IF NOT EXISTS won't alter an existing table's columns.)
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(papers)").fetchall()}
+    for col in ("spec_version", "er_file"):
+        if col not in existing:
+            conn.execute(f"ALTER TABLE papers ADD COLUMN {col} TEXT")
+
     conn.commit()
     conn.close()
 
@@ -236,16 +246,19 @@ def insert_paper(paper_id: str, meta: dict, records: list[dict], db_path: str = 
 
     conn.execute("""
         INSERT OR REPLACE INTO papers
-            (paper_id, year, session, unit, syllabus, paper_file, ms_file, parsed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (paper_id, year, session, unit, syllabus, spec_version,
+             paper_file, ms_file, er_file, parsed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         paper_id,
         meta.get("year"),
         meta.get("session"),
         meta.get("unit", "P2"),
         meta.get("syllabus", "Edexcel IAL"),
+        meta.get("spec_version"),
         meta.get("paper_file"),
         meta.get("ms_file"),
+        meta.get("er_file"),
         datetime.now().isoformat(),
     ))
 
